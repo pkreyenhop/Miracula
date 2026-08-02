@@ -90,6 +90,37 @@ go tool pprof -top -alloc_objects mem.out
   a linked results document.
 - `make verify` passes.
 
+### Baseline recorded 2026-08-02
+
+Environment: Apple M4, `darwin/arm64`, Go toolchain selected by `go.mod`, commit
+`99304e1`. Results are medians of three one-iteration samples; these workloads
+are intentionally large, so later comparisons must use the same benchmark
+arguments.
+
+| Workload | ns/op | B/op | allocs/op |
+| --- | ---: | ---: | ---: |
+| Pattern Fibonacci 32 | 581,210,542 | 20,880 | 104 |
+| Cold startup | 12,457,083 | 138,121,872 | 10,376 |
+| Warm startup | 11,932,541 | 138,119,912 | 10,369 |
+| Parse and typecheck 1,000 definitions | 12,788,708 | 32,932,624 | 137,274 |
+| Repeated `sum [1..100]` | 55,583 | 117,616 | 900 |
+| `sum [1..1000000]` | 215,510,667 | 984,130,728 | 5,000,433 |
+| 256-bit arithmetic | 57,084 | 96,504 | 480 |
+| `reverse [1..1000000]` | 218,494,750 | 1,896,202,208 | 3,000,478 |
+| `take 100000 [1..]` forced to its last item | 15,053,250 | 107,486,232 | 300,438 |
+| Higher-order list pipeline | 62,515,375 | 206,703,192 | 1,050,834 |
+| Pattern matching over 1,000 items | 62,399,042 | 209,403,280 | 58,037 |
+
+Initial regression budgets are deliberately loose: no listed workload may
+exceed 2x its baseline median without an explicit explanation. Targeted
+milestones must improve their primary workload by at least 10% or reduce its
+allocations by at least 20%; Milestone 2 retains its stronger 2x Fibonacci goal.
+
+The Fibonacci CPU profile attributes 40.15% flat time to `evalFastScalar`,
+18.94% to compiled unary-clause dispatch, 10.35% to `strconv.ParseUint`, and
+6.31% to `strconv.ParseInt`. This makes repeated interpretation and numeric
+literal parsing the first measured optimization target.
+
 ## Milestone 2: broaden scalar specialization
 
 ### Objective

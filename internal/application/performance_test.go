@@ -5,7 +5,14 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/pkreyenhop/miracula/internal/platformsvc"
+	"github.com/pkreyenhop/miracula/internal/semantics"
+	"github.com/pkreyenhop/miracula/internal/syntaxfront"
 )
 
 const fibonacciSource = `fib n = 1, if n<=2
@@ -96,6 +103,166 @@ func BenchmarkEvaluatePatternFib32(b *testing.B) {
 	for range b.N {
 		result, err := i.Evaluate(context.Background(), "fib 32")
 		if err != nil || result != "2178309" {
+			b.Fatalf("result=%q err=%v", result, err)
+		}
+	}
+}
+
+func BenchmarkColdStartup(b *testing.B) {
+	directory := b.TempDir()
+	script := filepath.Join(directory, "empty.m")
+	if err := os.WriteFile(script, nil, 0o600); err != nil {
+		b.Fatal(err)
+	}
+	library := filepath.Join(repositoryRoot(b), "lib", "miralib")
+	b.ReportAllocs()
+	for range b.N {
+		if err := os.Remove(strings.TrimSuffix(script, ".m") + ".x"); err != nil && !os.IsNotExist(err) {
+			b.Fatal(err)
+		}
+		interpreter := New(platformsvc.NativeServices{})
+		interpreter.Config.LibraryPath = library
+		interpreter.InitialScript = script
+		if err := interpreter.Boot(); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkWarmStartup(b *testing.B) {
+	directory := b.TempDir()
+	script := filepath.Join(directory, "empty.m")
+	if err := os.WriteFile(script, nil, 0o600); err != nil {
+		b.Fatal(err)
+	}
+	library := filepath.Join(repositoryRoot(b), "lib", "miralib")
+	prime := New(platformsvc.NativeServices{})
+	prime.Config.LibraryPath, prime.InitialScript = library, script
+	if err := prime.Boot(); err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		interpreter := New(platformsvc.NativeServices{})
+		interpreter.Config.LibraryPath, interpreter.InitialScript = library, script
+		if err := interpreter.Boot(); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkParseAndTypecheckLargeSource(b *testing.B) {
+	var source strings.Builder
+	for index := 0; index < 1000; index++ {
+		fmt.Fprintf(&source, "f%d x = x + %d\n", index, index)
+	}
+	bytes := []byte(source.String())
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		parsed := syntaxfront.Run(bytes)
+		if len(parsed.Diagnostics) != 0 {
+			b.Fatal(parsed.Diagnostics)
+		}
+		if _, err := semantics.Check(parsed.Script); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkRepeatedREPLExpression(b *testing.B) {
+	interpreter := New(nil)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		result, err := interpreter.Evaluate(context.Background(), "sum [1..100]")
+		if err != nil || result != "5050" {
+			b.Fatalf("result=%q err=%v", result, err)
+		}
+	}
+}
+
+func BenchmarkLargeListSum(b *testing.B) {
+	interpreter := New(nil)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		result, err := interpreter.Evaluate(context.Background(), "sum [1..1000000]")
+		if err != nil || result != "500000500000" {
+			b.Fatalf("result=%q err=%v", result, err)
+		}
+	}
+}
+
+func BenchmarkLargeIntegerArithmetic(b *testing.B) {
+	interpreter := New(nil)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		result, err := interpreter.Evaluate(context.Background(), "2^256 + 2^128")
+		if err != nil || result != "115792089237316195423570985008687907853610267032561502502920958615344897851392" {
+			b.Fatalf("result=%q err=%v", result, err)
+		}
+	}
+}
+
+func BenchmarkLargeListReverse(b *testing.B) {
+	interpreter := New(nil)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		value, err := interpreter.evaluateValue(context.Background(), "reverse [1..1000000]")
+		if err != nil || value.kind != valueList {
+			b.Fatalf("value=%v err=%v", value.kind, err)
+		}
+		first, ok, err := value.list.at(context.Background(), 0)
+		number, numberErr := numberValue(first)
+		if err != nil || !ok || numberErr != nil || !number.IsInt64() || number.Int64() != 1000000 {
+			b.Fatalf("first=%+v ok=%v err=%v", first, ok, err)
+		}
+	}
+}
+
+func BenchmarkInfiniteListFinitePrefix(b *testing.B) {
+	interpreter := New(nil)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		value, err := interpreter.evaluateValue(context.Background(), "take 100000 [1..]")
+		if err != nil || value.kind != valueList {
+			b.Fatalf("value=%v err=%v", value.kind, err)
+		}
+		last, ok, err := value.list.at(context.Background(), 99999)
+		number, numberErr := numberValue(last)
+		if err != nil || !ok || numberErr != nil || !number.IsInt64() || number.Int64() != 100000 {
+			b.Fatalf("last=%+v ok=%v err=%v", last, ok, err)
+		}
+	}
+}
+
+func BenchmarkHigherOrderListPipeline(b *testing.B) {
+	interpreter := New(nil)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		result, err := interpreter.Evaluate(context.Background(), "sum (map (2*) (filter (>50000) [1..100000]))")
+		if err != nil || result != "7500050000" {
+			b.Fatalf("result=%q err=%v", result, err)
+		}
+	}
+}
+
+func BenchmarkPatternMatching(b *testing.B) {
+	interpreter := New(nil)
+	if err := interpreter.runtime().installSource([]byte("length [] = 0\nlength (x:xs) = 1 + length xs\n")); err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		result, err := interpreter.Evaluate(context.Background(), "length [1..1000]")
+		if err != nil || result != "1000" {
 			b.Fatalf("result=%q err=%v", result, err)
 		}
 	}
