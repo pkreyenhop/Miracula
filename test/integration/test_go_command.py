@@ -6,7 +6,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import subprocess
-import sys
 import tempfile
 import unittest
 
@@ -21,8 +20,9 @@ class GoCommandTests(unittest.TestCase):
         cls.binary = Path(cls.temporary.name) / "mira"
         subprocess.run(
             [
-                sys.executable,
-                str(ROOT / "tools/package.py"),
+                "go",
+                "run",
+                "./internal/cmd/package",
                 "build",
                 "--output",
                 str(cls.binary),

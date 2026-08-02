@@ -7,13 +7,12 @@ import hashlib
 import os
 from pathlib import Path
 import subprocess
-import sys
 import tarfile
 import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-PACKAGER = ROOT / "tools/package.py"
+PACKAGER = ["go", "run", "./internal/cmd/package"]
 
 
 class InstalledProductTests(unittest.TestCase):
@@ -23,7 +22,7 @@ class InstalledProductTests(unittest.TestCase):
         self.destdir = self.root / "stage"
         self.prefix = Path("/opt/miracula")
         subprocess.run(
-            [sys.executable, PACKAGER, "install", "--prefix", self.prefix, "--destdir", self.destdir],
+            [*PACKAGER, "install", "--prefix", self.prefix, "--destdir", self.destdir],
             cwd=ROOT, check=True, timeout=120,
         )
         self.binary = self.destdir / "opt/miracula/bin/mira"
@@ -59,7 +58,7 @@ class InstalledProductTests(unittest.TestCase):
         sentinel = self.destdir / "opt/miracula/keep-me"
         sentinel.write_text("user data", encoding="utf-8")
         subprocess.run(
-            [sys.executable, PACKAGER, "uninstall", "--prefix", self.prefix, "--destdir", self.destdir],
+            [*PACKAGER, "uninstall", "--prefix", self.prefix, "--destdir", self.destdir],
             cwd=ROOT, check=True,
         )
         self.assertFalse(self.binary.exists())
@@ -71,7 +70,7 @@ class InstalledProductTests(unittest.TestCase):
         first, second = self.root / "first.tar.gz", self.root / "second.tar.gz"
         for output in (first, second):
             subprocess.run(
-                [sys.executable, PACKAGER, "archive", "--output", output],
+                [*PACKAGER, "archive", "--output", output],
                 cwd=ROOT, env=environment, check=True, timeout=120,
             )
         self.assertEqual(hashlib.sha256(first.read_bytes()).digest(), hashlib.sha256(second.read_bytes()).digest())

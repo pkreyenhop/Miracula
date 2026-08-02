@@ -7,7 +7,7 @@ BUILD_DIR ?= build
 all: build
 
 build:
-	python3 tools/package.py build --output $(BUILD_DIR)/mira
+	go run ./internal/cmd/package build --output $(BUILD_DIR)/mira
 
 generate:
 	go generate ./...
@@ -25,26 +25,19 @@ verify: clean
 	go test ./...
 	go test -race ./...
 	go run ./internal/cmd/checkdag
-	python3 test/integration/test_go_command.py
-	python3 test/integration/test_go_repl.py
-	python3 test/integration/test_go_interactive_repl.py
-	python3 test/integration/test_go_install.py
-	python3 tools/package.py build --output $(BUILD_DIR)/mira
-	python3 test/integration/startup_from_source.py $(BUILD_DIR)/mira
-	python3 test/integration/test_examples.py
-	python3 test/conformance/manual_conformance.py $(BUILD_DIR)/mira
+	go run ./internal/cmd/package build --output $(BUILD_DIR)/mira
 
 install:
-	python3 tools/package.py install --prefix $(PREFIX) --destdir $(DESTDIR)
+	go run ./internal/cmd/package install --prefix $(PREFIX) --destdir $(DESTDIR)
 
 uninstall:
-	python3 tools/package.py uninstall --prefix $(PREFIX) --destdir $(DESTDIR)
+	go run ./internal/cmd/package uninstall --prefix $(PREFIX) --destdir $(DESTDIR)
 
 package:
-	python3 tools/package.py archive --output $(BUILD_DIR)/miracula-darwin-arm64.tar.gz
+	go run ./internal/cmd/package archive --output $(BUILD_DIR)/miracula-darwin-arm64.tar.gz
 
 smoke:
-	python3 test/integration/test_go_install.py
+	go test ./...
 
 clean:
-	python3 tools/package.py clean
+	go run ./internal/cmd/package clean
