@@ -2,7 +2,7 @@ PREFIX ?= /usr/local
 DESTDIR ?= /
 BUILD_DIR ?= build
 
-.PHONY: all build generate test race verify install uninstall package smoke clean
+.PHONY: all build generate test vet race verify install uninstall package smoke clean
 
 all: build
 
@@ -15,6 +15,9 @@ generate:
 test:
 	go test ./...
 
+vet:
+	go vet ./...
+
 race:
 	go test -race ./...
 
@@ -22,6 +25,7 @@ verify: clean
 	mkdir -p $(BUILD_DIR)/.generated
 	go run ./internal/cmd/gencombinators -input internal/protocol/combinators.json -output $(BUILD_DIR)/.generated/combinator_generated.go
 	cmp internal/protocol/combinator_generated.go $(BUILD_DIR)/.generated/combinator_generated.go
+	go vet ./...
 	go test ./...
 	go test -race ./...
 	go run ./internal/cmd/checkdag

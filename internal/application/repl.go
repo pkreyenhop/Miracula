@@ -541,6 +541,9 @@ func (i *Interpreter) handleQuery(line string, out io.Writer) error {
 		if !ok {
 			return i.diagnose(out, name)
 		}
+		if path == "<built-in>" {
+			return i.fingerName(out, name)
+		}
 		if i.Config.BadEditor {
 			return i.editorWarning(out)
 		}
@@ -599,6 +602,10 @@ func (i *Interpreter) fingerName(out io.Writer, name string) error {
 	objectText := ""
 	if i.Config.Object {
 		objectText = fmt.Sprintf(" ||combinator root %d", definition.Root)
+	}
+	if path == "<built-in>" {
+		_, err := fmt.Fprintf(out, "%s :: %s%s ||defined internally%s\n", name, typeText, aliasText, objectText)
+		return err
 	}
 	_, err := fmt.Fprintf(out, "%s :: %s%s ||defined in %q line %d%s\n", name, typeText, aliasText, path, definition.Expression.Span.Line, objectText)
 	return err
@@ -1032,6 +1039,9 @@ func (i *Interpreter) printSettings(out io.Writer) error {
 func legacyEvaluationError(err error) string {
 	var typeErr semantics.TypeError
 	if errors.As(err, &typeErr) {
+		if typeErr.Message == "unsupported expression empty" {
+			return "syntax error - unexpected newline"
+		}
 		return "type error in expression\n" + typeErr.Message
 	}
 	if strings.Contains(err.Error(), "division by zero") {

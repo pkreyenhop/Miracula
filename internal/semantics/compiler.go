@@ -343,7 +343,7 @@ func definitionName(expression syntaxfront.Expr) (string, []string, bool) {
 }
 
 func definitionPatterns(expression syntaxfront.Expr) (string, []syntaxfront.Expr, bool) {
-	if expression.Variant == "infix" && strings.HasPrefix(expression.Text, "$") && expression.Head != nil && expression.Tail != nil {
+	if expression.Variant == "infix" && (strings.HasPrefix(expression.Text, "$") || expression.Text == "|>") && expression.Head != nil && expression.Tail != nil {
 		return strings.TrimPrefix(expression.Text, "$"), []syntaxfront.Expr{*expression.Head, *expression.Tail}, true
 	}
 	var patterns []syntaxfront.Expr

@@ -1157,7 +1157,7 @@ func quoteMirandaChar(value rune) string {
 }
 
 func runtimePatterns(expression syntaxfront.Expr) (string, []syntaxfront.Expr, bool) {
-	if expression.Variant == "infix" && strings.HasPrefix(expression.Text, "$") && expression.Head != nil && expression.Tail != nil {
+	if expression.Variant == "infix" && (strings.HasPrefix(expression.Text, "$") || expression.Text == "|>") && expression.Head != nil && expression.Tail != nil {
 		return strings.TrimPrefix(expression.Text, "$"), []syntaxfront.Expr{*expression.Head, *expression.Tail}, true
 	}
 	var parameters []syntaxfront.Expr
@@ -1794,6 +1794,18 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 		}
 		return applyLanguage(ctx, function, argument)
 	case "infix":
+		if expression.Text == "|>" {
+			function, err := r.eval(ctx, *expression.Tail, environment)
+			if err != nil {
+				return languageValue{}, err
+			}
+			argumentExpression := *expression.Head
+			argumentEnvironment := cloneEnvironment(environment)
+			argument := &languageThunk{eval: func() (languageValue, error) {
+				return r.eval(ctx, argumentExpression, argumentEnvironment)
+			}}
+			return applyLanguageThunk(ctx, function, argument)
+		}
 		if expression.Text == ":" {
 			headExpression := *expression.Head
 			headEnvironment := cloneEnvironment(environment)

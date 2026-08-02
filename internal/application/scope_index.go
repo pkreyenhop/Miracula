@@ -132,6 +132,9 @@ func (i *Interpreter) scopeEntry(name string) (scopeEntry, bool) {
 			return entry, true
 		}
 	}
+	if valueType, ok := semantics.PrimitiveType(name); ok {
+		return scopeEntry{Name: name, Original: name, Path: "<built-in>", Type: valueType, Standard: true}, true
+	}
 	return scopeEntry{}, false
 }
 

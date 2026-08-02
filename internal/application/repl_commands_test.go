@@ -227,6 +227,20 @@ func TestIdentifierQueriesLocateInternallyImplementedStandardDeclarations(t *tes
 	}
 }
 
+func TestIdentifierQueriesDescribeBuiltInOperators(t *testing.T) {
+	i := queryInterpreter()
+	for _, query := range []string{"?|>", "??|>"} {
+		var output bytes.Buffer
+		if err := i.handleQuery(query, &output); err != nil {
+			t.Fatalf("%s: %v", query, err)
+		}
+		want := "|> :: *->(*->**)->** ||defined internally\n"
+		if output.String() != want {
+			t.Fatalf("%s = %q, want %q", query, output.String(), want)
+		}
+	}
+}
+
 func TestScopeIndexUnifiesStandardIncludedAliasedSuppressedAndLocalNames(t *testing.T) {
 	i := queryInterpreter()
 	standardPath := "/tmp/miralib/stdenv.m"

@@ -63,7 +63,11 @@ func TestBootLoadsLibraryAndUserProgram(t *testing.T) {
 		sort.Strings(missing)
 		t.Fatalf("standard names missing at runtime: %v", missing)
 	}
-	for expression, want := range map[string]string{"fst (1,2)": "1", "abs (-3)": "3", "concat [[1,2],[],[3,4]]": "[1,2,3,4]", "digit '7'": "True", "const 3 undef": "3"} {
+	definition, definitionPath, ok := i.findDefinition("|>")
+	if !ok || filepath.Base(definitionPath) != "stdenv.m" || definition.Expression.Span.Line == 0 {
+		t.Fatalf("pipeline definition = %+v, path = %q, ok = %v", definition, definitionPath, ok)
+	}
+	for expression, want := range map[string]string{"fst (1,2)": "1", "abs (-3)": "3", "concat [[1,2],[],[3,4]]": "[1,2,3,4]", "digit '7'": "True", "const 3 undef": "3", `"peter" |> reverse`: "retep"} {
 		got, err := i.Evaluate(context.Background(), expression)
 		if err != nil || got != want {
 			t.Fatalf("%s = %q, %v; want %q", expression, got, err, want)
@@ -230,6 +234,17 @@ func TestREPLEvaluatesPipedExpressionWithoutPrompt(t *testing.T) {
 	}
 }
 
+func TestIncompleteForwardPipelineReportsSyntaxError(t *testing.T) {
+	i := New(platformsvc.NativeServices{})
+	var output bytes.Buffer
+	if err := i.REPL(context.Background(), strings.NewReader("\"peter\" |>\n/q\n"), &output); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := output.String(), "syntax error - unexpected newline\n"; got != want {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+}
+
 func TestREPLCountReportsGoRuntimeWork(t *testing.T) {
 	i := New(platformsvc.NativeServices{})
 	i.Config.Count = true
@@ -270,12 +285,14 @@ func TestREPLReportsActualTypeForReverseNonList(t *testing.T) {
 func TestLanguageRuntimeSupportsLazyHigherOrderAndBignumValues(t *testing.T) {
 	i := New(platformsvc.NativeServices{})
 	for expression, expected := range map[string]string{
-		"product [1..10]":    "3628800",
-		"map (2*) [1..5]":    "[2,4,6,8,10]",
-		"2^80":               "1208925819614629174706176",
-		"take 5 [1..]":       "[1,2,3,4,5]",
-		"zip2 [1,2] [3,4]":   "[(1,3),(2,4)]",
-		"\"abc\" ++ \"def\"": "abcdef",
+		"product [1..10]":                 "3628800",
+		"map (2*) [1..5]":                 "[2,4,6,8,10]",
+		"2^80":                            "1208925819614629174706176",
+		"take 5 [1..]":                    "[1,2,3,4,5]",
+		"zip2 [1,2] [3,4]":                "[(1,3),(2,4)]",
+		"\"abc\" ++ \"def\"":              "abcdef",
+		"\"peter\" |> reverse":            "retep",
+		"\"peter\" |> reverse |> reverse": "peter",
 	} {
 		actual, err := i.Evaluate(context.Background(), expression)
 		if err != nil || actual != expected {

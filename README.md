@@ -88,13 +88,13 @@ fib 20
 - `internal/` — compiler, runtime, evaluator, REPL, and platform services
 - `lib/miralib/` — standard environment, manual, help data, and examples
 - `testdata/` — language fixtures and golden-output corpus
-- `test/integration/` — installed-product and command-boundary tests
+- package-local `_test.go` files — unit, command-boundary, packaging, and example tests
 - `docs/` — project documentation and historical notes
-- `tools/` — release and packaging utilities
+- `internal/cmd/` — Go-native generation, validation, and packaging tools
 
 ## Building and installing
 
-The interpreter is written in Go and supports macOS on Apple Silicon. Go 1.23
+The interpreter is written in Go and supports macOS on Apple Silicon. Go 1.24
 or newer is required:
 
 ```sh
@@ -132,10 +132,9 @@ The repository includes:
 - installed-product and deterministic-package tests.
 
 Builds and tests run locally; the repository does not use hosted CI. Before
-submitting a change, run `make verify`. This performs generation checks, unit
-and race tests, package-DAG validation, command/REPL/install tests, a production
-build, and clean-source startup. Run `make clean` afterward to remove build
-output and disposable `.x` caches created by integration tests.
+submitting a change, run `make verify`. This performs generated-source checks,
+`go vet`, unit and race tests, package-DAG validation, and a production build.
+Run `make clean` afterward to remove build output and disposable `.x` caches.
 
 ## Standard library and examples
 

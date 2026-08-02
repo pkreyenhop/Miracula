@@ -128,6 +128,21 @@ func TestParenthesizedNegativeIsNotAnOperatorSection(t *testing.T) {
 	}
 }
 
+func TestForwardPipelineIsLowPrecedenceAndLeftAssociative(t *testing.T) {
+	parsed := Run([]byte("value = xs ++ ys |> reverse |> hd\n"))
+	if len(parsed.Diagnostics) != 0 || len(parsed.Script.Items) != 1 {
+		t.Fatal(parsed.Diagnostics)
+	}
+	outer := parsed.Script.Items[0].RHS
+	if outer.Variant != "infix" || outer.Text != "|>" || outer.Head == nil || outer.Head.Variant != "infix" || outer.Head.Text != "|>" {
+		t.Fatalf("pipeline AST = %#v", outer)
+	}
+	input := outer.Head.Head
+	if input == nil || input.Variant != "infix" || input.Text != "++" {
+		t.Fatalf("pipeline input = %#v", input)
+	}
+}
+
 func BenchmarkParseSource(b *testing.B) {
 	source := []byte("qsort [] = []\nqsort (a:x) = qsort [b | b <- x; b <= a] ++ [a] ++ qsort [b | b <- x; b > a]\n")
 	b.ReportAllocs()

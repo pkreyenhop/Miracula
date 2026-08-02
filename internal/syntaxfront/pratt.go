@@ -4,6 +4,10 @@ type BindingPower struct{ Left, Right int }
 
 func InfixBinding(kind string) (BindingPower, bool) {
 	switch kind {
+	case "pipe_forward":
+		// Pipelines bind more weakly than every existing Miranda operator and
+		// associate left, so x |> f |> g means g (f x).
+		return BindingPower{10, 11}, true
 	case "or":
 		return BindingPower{20, 19}, true
 	case "and", "ampersand":

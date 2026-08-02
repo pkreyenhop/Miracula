@@ -74,12 +74,30 @@ func run(arguments []string) error {
 }
 
 func repositoryRoot() (string, error) {
-	command := exec.Command("git", "rev-parse", "--show-toplevel")
-	output, err := command.Output()
+	workingDirectory, err := os.Getwd()
 	if err != nil {
-		return "", errors.New("package must run inside the repository")
+		return "", err
 	}
-	return strings.TrimSpace(string(output)), nil
+	return findModuleRoot(workingDirectory)
+}
+
+func findModuleRoot(start string) (string, error) {
+	directory, err := filepath.Abs(start)
+	if err != nil {
+		return "", err
+	}
+	for {
+		moduleFile := filepath.Join(directory, "go.mod")
+		contents, readErr := os.ReadFile(moduleFile)
+		if readErr == nil && strings.Contains(string(contents), "module github.com/pkreyenhop/miracula") {
+			return directory, nil
+		}
+		parent := filepath.Dir(directory)
+		if parent == directory {
+			return "", errors.New("package must run inside the Miracula Go module")
+		}
+		directory = parent
+	}
 }
 
 func absolute(root, path string) string {
@@ -173,7 +191,10 @@ func copyTree(source, target string) error {
 			}
 			return nil
 		}
-		relative, _ := filepath.Rel(source, path)
+		relative, err := filepath.Rel(source, path)
+		if err != nil {
+			return err
+		}
 		destination := filepath.Join(target, relative)
 		if entry.IsDir() {
 			return os.MkdirAll(destination, 0o755)
@@ -250,7 +271,10 @@ func archive(root, output string) error {
 		if headerErr != nil {
 			return headerErr
 		}
-		relative, _ := filepath.Rel(staging, path)
+		relative, relativeErr := filepath.Rel(staging, path)
+		if relativeErr != nil {
+			return relativeErr
+		}
 		header.Name = filepath.ToSlash(filepath.Join("miracula", relative))
 		header.Uid, header.Gid, header.Uname, header.Gname = 0, 0, "root", "root"
 		header.ModTime, header.AccessTime, header.ChangeTime = time.Unix(epoch(root), 0).UTC(), time.Time{}, time.Time{}

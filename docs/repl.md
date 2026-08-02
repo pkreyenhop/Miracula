@@ -24,10 +24,10 @@ and pushed to `main`.
 | F14 — editor-validity warning | `b5e548e` |
 | Interactive transcript gate | `b91ac7f` |
 
-The authoritative local acceptance command is `make verify`. It covers unit
-tests, race tests, package-DAG enforcement, non-interactive integration tests,
-the interactive pseudo-terminal transcript, installation checks, and a
-source-only standard-library startup.
+The authoritative local acceptance command is `make verify`. It uses Go-native
+checks throughout: generated-source comparison, `go vet`, unit and race tests,
+package-DAG enforcement, and a production build. Command, REPL, packaging, and
+example behavior are exercised by package-local Go tests.
 
 ## Purpose
 
@@ -495,7 +495,7 @@ print the `edWarn` message instead of opening; `vi +!` does not.
 ## Cross-cutting: parity testing
 
 Interactive features cannot use the non-interactive corpus directly. The local
-gate therefore runs `test/integration/test_go_interactive_repl.py`, which drives
+gate therefore includes Go REPL tests which drive
 the production binary through a pseudo-terminal and checks completion, timed
 prompts, comments, legacy diagnostics, and clean logout. Focused Go tests cover
 history, editing keys, editor templates and diagnostic positioning, identifier

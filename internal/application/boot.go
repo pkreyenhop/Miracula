@@ -45,6 +45,10 @@ func (i *Interpreter) Boot() error {
 			return fmt.Errorf("install %s: %w", name, err)
 		}
 	}
+	// Standard-library definitions document many functions that also have
+	// optimized Go implementations. Restore those implementations after loading
+	// the library; a subsequently loaded user script may still shadow them.
+	i.runtime().installBuiltins()
 	if i.InitialScript == "" {
 		workingDirectory, err := os.Getwd()
 		if err != nil {

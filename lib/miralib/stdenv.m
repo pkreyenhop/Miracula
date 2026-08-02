@@ -12,6 +12,13 @@ comment.  This is the standard environment of Miranda release two.
 
 Added October 2019 - showhex, showoct - see below.
 
+The forward application operator `|>' passes its left operand to the function
+on its right.  It has low precedence and associates to the left, allowing a
+sequence of transformations to be written in reading order.
+
+> |> :: *->(*->**)->**
+> x |> f = f x
+
 `abs' takes the absolute value of a number - e.g. abs (-3) is 3, abs 3.5
 is 3.5
 
@@ -758,4 +765,3 @@ The normal Miranda style is to use the curried form `zip2'.
 > zip (x,y) = zip2 x y
 
 End of definitions of the standard environment
-
