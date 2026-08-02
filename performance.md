@@ -330,6 +330,20 @@ characters.
 - String/list behavior remains observationally compatible with Miranda.
 - UTF-8, empty strings, comparison, and streaming tests pass.
 
+### Result recorded 2026-08-02
+
+A Unicode-aware sequence iterator now lets subscripting, `take`, `drop`, `map`,
+`filter`, folds, and other streaming consumers traverse compact strings without
+first constructing character-list graphs. String-preserving operations retain
+the compact representation, while general transforms produce lazy lists.
+`reverse` now walks UTF-8 from the end into one pre-sized buffer instead of
+materializing a `[]rune`. On a one-million-character mixed-width string its
+median improved from 5,786,125 ns/op to 5,028,792 ns/op (13.1% faster), and
+storage fell from 6,012,928 B/op to 2,007,040 B/op (66.6% less) with one
+allocation. The existing direct lazy-list traversal remains in place, keeping
+the million-item sum at its Milestone 6 performance level. Tests cover ASCII,
+multibyte Unicode, string/list consumers, and compact string results.
+
 ## Milestone 8: reuse evaluator scratch storage
 
 ### Objective

@@ -356,6 +356,11 @@ func TestLanguageRuntimeSupportsLazyHigherOrderAndBignumValues(t *testing.T) {
 		"\"abc\" ++ \"def\"":              "abcdef",
 		"\"peter\" |> reverse":            "retep",
 		"\"peter\" |> reverse |> reverse": "peter",
+		"reverse \"Aλ🙂\"":                 "🙂λA",
+		"take 2 \"AλB\"":                  "Aλ",
+		"drop 1 \"AλB\"":                  "λB",
+		"\"AλB\"!1":                       "'λ'",
+		"map code \"Aλ\"":                 "[65,955]",
 	} {
 		actual, err := i.Evaluate(context.Background(), expression)
 		if err != nil || actual != expected {

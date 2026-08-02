@@ -90,6 +90,48 @@ type lazyList struct {
 	next   func(context.Context, int) (languageValue, bool, error)
 }
 
+type sequenceIterator struct {
+	value      languageValue
+	index      int
+	byteOffset int
+}
+
+func newSequenceIterator(value languageValue) (*sequenceIterator, error) {
+	if value.kind != valueString && (value.kind != valueList || value.list == nil) {
+		return nil, listTypeMismatch(value)
+	}
+	return &sequenceIterator{value: value}, nil
+}
+
+func (iterator *sequenceIterator) next(ctx context.Context) (languageValue, bool, error) {
+	if iterator.value.kind == valueString {
+		if iterator.byteOffset >= len(iterator.value.text) {
+			return languageValue{}, false, nil
+		}
+		char, width := utf8.DecodeRuneInString(iterator.value.text[iterator.byteOffset:])
+		iterator.byteOffset += width
+		iterator.index++
+		return languageValue{kind: valueChar, small: int64(char)}, true, nil
+	}
+	value, ok, err := iterator.value.list.at(ctx, iterator.index)
+	if ok {
+		iterator.index++
+	}
+	return value, ok, err
+}
+
+func reverseUTF8(text string) string {
+	var reversed strings.Builder
+	reversed.Grow(len(text))
+	for end := len(text); end > 0; {
+		_, width := utf8.DecodeLastRuneInString(text[:end])
+		start := end - width
+		reversed.WriteString(text[start:end])
+		end = start
+	}
+	return reversed.String()
+}
+
 func (l *lazyList) at(ctx context.Context, index int) (languageValue, bool, error) {
 	for {
 		l.mu.Lock()
@@ -3188,24 +3230,23 @@ func (r *languageRuntime) installBuiltins() {
 		if e != nil || !index.IsInt64() || index.Sign() < 0 {
 			return languageValue{}, errors.New("non-negative integer subscript expected")
 		}
-		if sequence.kind == valueString {
-			chars := []rune(sequence.text)
-			if index.Int64() >= int64(len(chars)) {
-				return languageValue{}, errors.New("subscript out of range")
-			}
-			return languageValue{kind: valueChar, small: int64(chars[index.Int64()])}, nil
-		}
-		if sequence.kind != valueList {
-			return languageValue{}, listTypeMismatch(sequence)
-		}
-		value, ok, e := sequence.list.at(ctx, int(index.Int64()))
+		iterator, e := newSequenceIterator(sequence)
 		if e != nil {
 			return languageValue{}, e
 		}
-		if !ok {
-			return languageValue{}, errors.New("subscript out of range")
+		for current := int64(0); current <= index.Int64(); current++ {
+			value, ok, e := iterator.next(ctx)
+			if e != nil {
+				return languageValue{}, e
+			}
+			if !ok {
+				return languageValue{}, errors.New("subscript out of range")
+			}
+			if current == index.Int64() {
+				return value, nil
+			}
 		}
-		return value, nil
+		panic("unreachable")
 	}))
 	r.builtin(".", curry2(func(_ context.Context, outer, inner languageValue) (languageValue, error) {
 		return languageValue{kind: valueFunction, lazyFn: func(ctx context.Context, argument *languageThunk) (languageValue, error) {
@@ -3269,11 +3310,7 @@ func (r *languageRuntime) installBuiltins() {
 	}})
 	r.builtin("reverse", languageValue{kind: valueFunction, fn: func(ctx context.Context, input languageValue) (languageValue, error) {
 		if input.kind == valueString {
-			runes := []rune(input.text)
-			for left, right := 0, len(runes)-1; left < right; left, right = left+1, right-1 {
-				runes[left], runes[right] = runes[right], runes[left]
-			}
-			return languageValue{kind: valueString, text: string(runes)}, nil
+			return languageValue{kind: valueString, text: reverseUTF8(input.text)}, nil
 		}
 		values, e := collectList(ctx, input)
 		if e != nil {
@@ -3285,9 +3322,6 @@ func (r *languageRuntime) installBuiltins() {
 		return listValue(values), nil
 	}})
 	r.builtin("take", curry2(func(ctx context.Context, count, input languageValue) (languageValue, error) {
-		if input.kind != valueList || input.list == nil {
-			return languageValue{}, listTypeMismatch(input)
-		}
 		n, e := numberValue(count)
 		if e != nil {
 			return languageValue{}, e
@@ -3295,9 +3329,28 @@ func (r *languageRuntime) installBuiltins() {
 		if !n.IsInt64() || n.Sign() < 0 {
 			return languageValue{}, errors.New("invalid take count")
 		}
+		iterator, e := newSequenceIterator(input)
+		if e != nil {
+			return languageValue{}, e
+		}
+		if input.kind == valueString {
+			var text strings.Builder
+			text.Grow(min(len(input.text), int(n.Int64())))
+			for index := int64(0); index < n.Int64(); index++ {
+				value, ok, err := iterator.next(ctx)
+				if err != nil {
+					return languageValue{}, err
+				}
+				if !ok {
+					break
+				}
+				text.WriteRune(rune(value.small))
+			}
+			return languageValue{kind: valueString, text: text.String()}, nil
+		}
 		values := make([]languageValue, 0, n.Int64())
 		for index := 0; index < int(n.Int64()); index++ {
-			v, ok, e := input.list.at(ctx, index)
+			v, ok, e := iterator.next(ctx)
 			if e != nil {
 				return languageValue{}, e
 			}
@@ -3309,11 +3362,12 @@ func (r *languageRuntime) installBuiltins() {
 		return listValue(values), nil
 	}))
 	r.builtin("map", curry2(func(ctx context.Context, function, input languageValue) (languageValue, error) {
-		if input.kind != valueList {
-			return languageValue{}, listTypeMismatch(input)
+		iterator, err := newSequenceIterator(input)
+		if err != nil {
+			return languageValue{}, err
 		}
-		return languageValue{kind: valueList, list: &lazyList{next: func(ctx context.Context, index int) (languageValue, bool, error) {
-			v, ok, e := input.list.at(ctx, index)
+		return languageValue{kind: valueList, list: &lazyList{next: func(ctx context.Context, _ int) (languageValue, bool, error) {
+			v, ok, e := iterator.next(ctx)
 			if e != nil || !ok {
 				return languageValue{}, ok, e
 			}
@@ -3322,14 +3376,13 @@ func (r *languageRuntime) installBuiltins() {
 		}}}, nil
 	}))
 	r.builtin("filter", curry2(func(ctx context.Context, predicate, input languageValue) (languageValue, error) {
-		if input.kind != valueList || input.list == nil {
-			return languageValue{}, listTypeMismatch(input)
+		iterator, err := newSequenceIterator(input)
+		if err != nil {
+			return languageValue{}, err
 		}
-		sourceIndex := 0
 		return languageValue{kind: valueList, list: &lazyList{next: func(nextCtx context.Context, _ int) (languageValue, bool, error) {
 			for {
-				value, ok, err := input.list.at(nextCtx, sourceIndex)
-				sourceIndex++
+				value, ok, err := iterator.next(nextCtx)
 				if err != nil || !ok {
 					return languageValue{}, ok, err
 				}
@@ -3498,6 +3551,14 @@ func (r *languageRuntime) installBuiltins() {
 		offset := number.Int64()
 		if offset < 0 {
 			offset = 0
+		}
+		if input.kind == valueString {
+			byteOffset := 0
+			for skipped := int64(0); skipped < offset && byteOffset < len(input.text); skipped++ {
+				_, width := utf8.DecodeRuneInString(input.text[byteOffset:])
+				byteOffset += width
+			}
+			return languageValue{kind: valueString, text: input.text[byteOffset:]}, nil
 		}
 		if input.kind != valueList {
 			return languageValue{}, listTypeMismatch(input)
@@ -3777,12 +3838,23 @@ func smallMul(a, b int64) (int64, bool) {
 }
 
 func collectList(ctx context.Context, value languageValue) ([]languageValue, error) {
-	if value.kind != valueList || value.list == nil {
-		return nil, listTypeMismatch(value)
+	if value.kind == valueList && value.list != nil {
+		var out []languageValue
+		for index := 0; ; index++ {
+			item, ok, err := value.list.at(ctx, index)
+			if err != nil || !ok {
+				return out, err
+			}
+			out = append(out, item)
+		}
+	}
+	iterator, err := newSequenceIterator(value)
+	if err != nil {
+		return nil, err
 	}
 	var out []languageValue
-	for index := 0; ; index++ {
-		item, ok, err := value.list.at(ctx, index)
+	for {
+		item, ok, err := iterator.next(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -3794,11 +3866,24 @@ func collectList(ctx context.Context, value languageValue) ([]languageValue, err
 }
 
 func streamList(ctx context.Context, value languageValue, visit func(languageValue) (bool, error)) error {
-	if value.kind != valueList || value.list == nil {
-		return listTypeMismatch(value)
+	if value.kind == valueList && value.list != nil {
+		for index := 0; ; index++ {
+			item, ok, err := value.list.at(ctx, index)
+			if err != nil || !ok {
+				return err
+			}
+			keepGoing, err := visit(item)
+			if err != nil || !keepGoing {
+				return err
+			}
+		}
 	}
-	for index := 0; ; index++ {
-		item, ok, err := value.list.at(ctx, index)
+	iterator, err := newSequenceIterator(value)
+	if err != nil {
+		return err
+	}
+	for {
+		item, ok, err := iterator.next(ctx)
 		if err != nil || !ok {
 			return err
 		}

@@ -26,6 +26,8 @@ fib 1 = 1
 fib n = fib (n-1) + fib (n-2)
 `
 
+var benchmarkStringResult string
+
 func fibonacciInterpreter(b testing.TB) *Interpreter {
 	b.Helper()
 	i := New(nil)
@@ -124,6 +126,34 @@ func BenchmarkForceEvaluatedThunkLegacyMutex(b *testing.B) {
 		if err != nil || value.small != 42 {
 			b.Fatalf("force = %#v, %v", value, err)
 		}
+	}
+}
+
+func BenchmarkReverseLargeUnicodeString(b *testing.B) {
+	input := strings.Repeat("abλ🙂", 250_000)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		benchmarkStringResult = reverseUTF8(input)
+	}
+	if len(benchmarkStringResult) != len(input) || !strings.HasPrefix(benchmarkStringResult, "🙂λba") {
+		b.Fatal("incorrect UTF-8 reversal")
+	}
+}
+
+func BenchmarkReverseLargeUnicodeStringRuneBaseline(b *testing.B) {
+	input := strings.Repeat("abλ🙂", 250_000)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		runes := []rune(input)
+		for left, right := 0, len(runes)-1; left < right; left, right = left+1, right-1 {
+			runes[left], runes[right] = runes[right], runes[left]
+		}
+		benchmarkStringResult = string(runes)
+	}
+	if len(benchmarkStringResult) != len(input) || !strings.HasPrefix(benchmarkStringResult, "🙂λba") {
+		b.Fatal("incorrect rune baseline reversal")
 	}
 }
 
