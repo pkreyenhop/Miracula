@@ -481,3 +481,33 @@ The work is complete only when correctness gates pass, performance gains are
 measured rather than assumed, and no optimization introduces a Python build
 dependency or expands the supported production platform beyond macOS on Apple
 Silicon.
+
+## Final acceptance recorded 2026-08-02
+
+`make verify` passed after Milestone 10, including vet, the complete test suite,
+the race detector, package-DAG validation, generated-source validation, and a
+production build. The required `go test ./internal/application -run '^$'
+-bench . -benchmem -count=10` run then passed in 282 seconds on Apple M4
+(`darwin/arm64`). Values below are ten-sample medians rounded to a useful
+precision; the Milestone 1 values are the original recorded medians.
+
+| Representative workload | Baseline ns/op | Final ns/op | Baseline B/op | Final B/op | Baseline allocs/op | Final allocs/op |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Pattern Fibonacci 32 | 581,210,542 | 59,383,000 | 20,880 | 1,990 | 104 | 10 |
+| Cold startup | 12,457,083 | 10,856,000 | 138,121,872 | 138,119,280 | 10,376 | 10,356 |
+| Warm startup | 11,932,541 | 5,913,000 | 138,119,912 | 101,814,851 | 10,369 | 10,175 |
+| Parse/typecheck 1,000 definitions | 12,788,708 | 11,615,000 | 32,932,624 | 32,932,655 | 137,274 | 137,272 |
+| Repeated REPL expression | 55,583 | 638 | 117,616 | 1,624 | 900 | 29 |
+| `sum [1..1000000]` | 215,510,667 | 650 | 984,130,728 | 1,632 | 5,000,433 | 29 |
+| 256-bit arithmetic | 57,084 | 7,874 | 96,504 | 18,149 | 480 | 53 |
+| `reverse [1..1000000]` | 218,494,750 | 201,645,000 | 1,896,202,208 | 1,896,156,662 | 3,000,478 | 3,000,181 |
+| `take 100000 [1..]` | 15,053,250 | 14,900,000 | 107,486,232 | 107,427,117 | 300,438 | 300,059 |
+| Higher-order list pipeline | 62,515,375 | 62,478,000 | 206,703,192 | 206,577,790 | 1,050,834 | 1,050,187 |
+| Pattern matching over 1,000 items | 62,399,042 | 49,107,000 | 209,403,280 | 195,409,399 | 58,037 | 33,601 |
+
+No representative workload exceeded its baseline. The smallest changes are in
+lazy finite-prefix and higher-order list traversal, where preserving graph
+sharing and consumption order intentionally limits optimization; both remain
+slightly faster with fewer bytes and allocations. The production scope remains
+macOS on Apple Silicon, the build is pure Go, and the user's working `script.m`
+is not part of any performance commit.
