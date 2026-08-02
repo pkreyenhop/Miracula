@@ -1333,20 +1333,29 @@ func (r *languageRuntime) compileFastScalar(expression syntaxfront.Expr, paramet
 			return nil, false
 		}
 		name := expression.Func.Text
+		thunk := r.globals[name]
+		if thunk == nil {
+			return nil, false
+		}
+		var resolveOnce sync.Once
+		var target func(context.Context, int64) (int64, bool, error)
+		var targetErr error
 		return func(ctx context.Context, input int64) (fastScalar, bool, error) {
 			value, matched, err := argument(ctx, input)
 			if err != nil || !matched || value.isBool {
 				return fastScalar{}, false, err
 			}
-			thunk := r.globals[name]
-			if thunk == nil {
-				return fastScalar{}, false, nil
+			resolveOnce.Do(func() {
+				var function languageValue
+				function, targetErr = thunk.force()
+				if targetErr == nil {
+					target = function.intFn
+				}
+			})
+			if targetErr != nil || target == nil {
+				return fastScalar{}, false, targetErr
 			}
-			function, err := thunk.force()
-			if err != nil || function.intFn == nil {
-				return fastScalar{}, false, err
-			}
-			result, matched, err := function.intFn(ctx, value.integer)
+			result, matched, err := target(ctx, value.integer)
 			return fastScalar{integer: result}, matched, err
 		}, true
 	}

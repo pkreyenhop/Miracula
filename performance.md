@@ -220,6 +220,16 @@ Remove repeated string hashing and comparison from hot evaluation paths.
 - Shadowing, includes, aliases, recursive groups, REPL definitions, and `?`/`??`
   queries retain current behavior.
 
+### Result recorded 2026-08-02
+
+Compiled scalar call nodes now resolve names to direct global-thunk references
+and cache the target integer entry point once. Recursive calls therefore avoid
+per-call string-map lookup and repeated thunk locking. Pattern Fibonacci 32
+improved from the Milestone 2 median of approximately 207,363,750 ns/op to
+66,275,792 ns/op (3.1x faster for this milestone and 8.8x faster than the
+Milestone 1 baseline). Top-level allocation count remains effectively constant;
+the improvement is removal of hot dispatch work.
+
 ## Milestone 5: introduce an executable instruction IR
 
 ### Objective
