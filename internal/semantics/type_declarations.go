@@ -47,7 +47,7 @@ func installTypeDeclarations(script syntaxfront.Script, state *inferState) error
 				state.abstract[fields[0]] = true
 			}
 		}
-		if !strings.Contains(text, "==") || strings.Contains(text, "::=") {
+		if !isTypeAliasText(text) {
 			continue
 		}
 		separator := strings.Index(text, "==")
@@ -114,6 +114,14 @@ func installTypeDeclarations(script syntaxfront.Script, state *inferState) error
 		}
 	}
 	return nil
+}
+
+func isTypeAliasText(text string) bool {
+	if strings.Contains(text, "::=") {
+		return false
+	}
+	separator := strings.Index(text, "==")
+	return separator >= 0 && !strings.Contains(text[:separator], "=")
 }
 
 func normalizedDeclarationText(text string) string {

@@ -450,6 +450,19 @@ func TestLanguageRuntimeUsesCallByNeed(t *testing.T) {
 	}
 }
 
+func TestExpressionConditionalIsLazy(t *testing.T) {
+	interpreter := New(nil)
+	for expression, want := range map[string]string{
+		"if 1 == 1 then 42 else 1 div 0": "42",
+		"if False then undef else 7":     "7",
+	} {
+		result, err := interpreter.Evaluate(context.Background(), expression)
+		if err != nil || result != want {
+			t.Fatalf("%s = %q, %v; want %q", expression, result, err, want)
+		}
+	}
+}
+
 func TestOptimizedSumRemainsInterruptibleAndShadowable(t *testing.T) {
 	interpreter := New(nil)
 	ctx, cancel := context.WithCancel(context.Background())

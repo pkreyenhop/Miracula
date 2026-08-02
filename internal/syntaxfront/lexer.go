@@ -13,7 +13,7 @@ type Token struct {
 }
 
 var keywords = map[string]string{
-	"abstype": "kw_abstype", "div": "kw_div", "if": "kw_if",
+	"abstype": "kw_abstype", "div": "kw_div", "if": "kw_if", "then": "kw_then", "else": "kw_else",
 	"mod": "kw_mod", "otherwise": "kw_otherwise", "readvals": "kw_readvals",
 	"show": "kw_show", "type": "kw_type", "where": "kw_where", "with": "kw_with",
 }
@@ -24,7 +24,7 @@ var operators = []struct{ text, kind string }{
 	{"->", "arrow"}, {"<-", "left_arrow"}, {"::", "type_annotation"},
 	{"|>", "pipe_forward"},
 	{"++", "append"}, {"--", "difference"}, {"..", "range"},
-	{"~=", "not_equal"}, {"<=", "less_equal"}, {">=", "greater_equal"},
+	{"==", "eq"}, {"~=", "not_equal"}, {"<=", "less_equal"}, {">=", "greater_equal"},
 	{"//", "diagonal"}, {"\\/", "or"}, {"/\\", "and"}, {"**", "typevar"},
 }
 

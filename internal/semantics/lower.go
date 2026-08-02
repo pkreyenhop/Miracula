@@ -61,6 +61,33 @@ func lowerExpr(expression syntaxfront.Expr, heap *graphstore.Heap) (protocol.Wor
 		}
 		ref, err := heap.Make(protocol.NodeApplication, function, argument)
 		return protocol.Word(ref), err
+	case "conditional":
+		condition, err := lowerExpr(*expression.Head, heap)
+		if err != nil {
+			return 0, err
+		}
+		trueBranch, err := lowerExpr(*expression.Body, heap)
+		if err != nil {
+			return 0, err
+		}
+		falseBranch, err := lowerExpr(*expression.Tail, heap)
+		if err != nil {
+			return 0, err
+		}
+		operator, err := lowerExpr(syntaxfront.Expr{Variant: "name", Text: "if"}, heap)
+		if err != nil {
+			return 0, err
+		}
+		first, err := heap.Make(protocol.NodeApplication, operator, condition)
+		if err != nil {
+			return 0, err
+		}
+		second, err := heap.Make(protocol.NodeApplication, protocol.Word(first), trueBranch)
+		if err != nil {
+			return 0, err
+		}
+		third, err := heap.Make(protocol.NodeApplication, protocol.Word(second), falseBranch)
+		return protocol.Word(third), err
 	case "infix":
 		left, err := lowerExpr(*expression.Head, heap)
 		if err != nil {

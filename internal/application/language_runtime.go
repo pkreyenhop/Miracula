@@ -2140,6 +2140,22 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 			return languageValue{}, err
 		}
 		return applyLanguage(ctx, function, argument)
+	case "conditional":
+		condition, err := r.eval(ctx, *expression.Head, environment)
+		if err != nil {
+			return languageValue{}, err
+		}
+		condition, err = forceLanguageValue(condition, nil)
+		if err != nil {
+			return languageValue{}, err
+		}
+		if condition.kind != valueBool {
+			return languageValue{}, errors.New("truthvalue expected")
+		}
+		if condition.flag {
+			return r.eval(ctx, *expression.Body, environment)
+		}
+		return r.eval(ctx, *expression.Tail, environment)
 	case "infix":
 		if expression.Text == "|>" {
 			function, err := r.eval(ctx, *expression.Tail, environment)
@@ -3750,6 +3766,21 @@ func (r *languageRuntime) installBuiltins() {
 		}
 	}
 	r.builtin("read", languageValue{kind: valueFunction, fn: readFile(false)})
+	r.builtin("lines", languageValue{kind: valueFunction, fn: func(_ context.Context, value languageValue) (languageValue, error) {
+		if value.kind != valueString {
+			return languageValue{}, errors.New("string expected")
+		}
+		text := strings.ReplaceAll(value.text, "\r\n", "\n")
+		parts := strings.Split(text, "\n")
+		if len(parts) > 0 && parts[len(parts)-1] == "" {
+			parts = parts[:len(parts)-1]
+		}
+		values := make([]languageValue, len(parts))
+		for index, line := range parts {
+			values[index] = languageValue{kind: valueString, text: line}
+		}
+		return listValue(values), nil
+	}})
 	r.builtin("readb", languageValue{kind: valueFunction, fn: readFile(true)})
 	r.builtin("filemode", languageValue{kind: valueFunction, fn: func(_ context.Context, value languageValue) (languageValue, error) {
 		if value.kind != valueString {

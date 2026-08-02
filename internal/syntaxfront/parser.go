@@ -124,6 +124,23 @@ func parsePratt(tokens []Token, position, minimum int) (Expr, int) {
 	token := tokens[position]
 	position++
 	switch token.Kind {
+	case "kw_if":
+		remaining := tokens[position:]
+		thenAt := topLevelIndex(remaining, "kw_then")
+		elseAt := -1
+		if thenAt >= 0 {
+			if relative := topLevelIndex(remaining[thenAt+1:], "kw_else"); relative >= 0 {
+				elseAt = thenAt + 1 + relative
+			}
+		}
+		if thenAt < 0 || elseAt < 0 {
+			return Expr{Variant: "empty", Span: token.Span}, len(tokens)
+		}
+		condition := parseExpression(remaining[:thenAt])
+		trueBranch := parseExpression(remaining[thenAt+1 : elseAt])
+		falseBranch := parseExpression(remaining[elseAt+1:])
+		result = Expr{Variant: "conditional", Head: &condition, Body: &trueBranch, Tail: &falseBranch, Span: Span{Start: token.Span.Start, End: falseBranch.Span.End, Line: token.Span.Line, Column: token.Span.Column}}
+		position = len(tokens)
 	case "minus", "not", "length":
 		argument, next := parsePratt(tokens, position, map[string]int{"minus": 65, "not": 35, "length": 85}[token.Kind])
 		result, position = Expr{Variant: map[string]string{"minus": "neg", "not": "not", "length": "length"}[token.Kind], Arg: exprPtr(argument), Span: token.Span}, next
@@ -243,7 +260,11 @@ func parsePratt(tokens []Token, position, minimum int) (Expr, int) {
 			}
 			position++
 			right, after := parsePratt(tokens, position, binding.Right)
-			result = Expr{Variant: "infix", Text: string(next.Bytes), Head: exprPtr(result), Tail: exprPtr(right), Span: Span{Start: result.Span.Start, End: right.Span.End, Line: result.Span.Line, Column: result.Span.Column}}
+			operator := string(next.Bytes)
+			if operator == "==" {
+				operator = "="
+			}
+			result = Expr{Variant: "infix", Text: operator, Head: exprPtr(result), Tail: exprPtr(right), Span: Span{Start: result.Span.Start, End: right.Span.End, Line: result.Span.Line, Column: result.Span.Column}}
 			position = after
 			continue
 		}
@@ -260,7 +281,7 @@ func parsePratt(tokens []Token, position, minimum int) (Expr, int) {
 
 func isExpressionStart(kind string) bool {
 	switch kind {
-	case "name", "cname", "const_int", "const_float", "const_str", "const_char", "lparen", "lbracket", "minus", "not", "length", "kw_show", "kw_readvals", "dollars", "stdin_text", "stdin_binary", "stdin_values", "arguments":
+	case "name", "cname", "const_int", "const_float", "const_str", "const_char", "lparen", "lbracket", "minus", "not", "length", "kw_if", "kw_show", "kw_readvals", "dollars", "stdin_text", "stdin_binary", "stdin_values", "arguments":
 		return true
 	}
 	return false

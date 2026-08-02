@@ -97,7 +97,7 @@ func compile(script syntaxfront.Script, heap *graphstore.Heap, lower bool, exter
 				program.Symbols.Intern(name)
 			}
 		}
-		if declaration.Variant == "definition" && !strings.Contains(normalizedDeclarationText(declaration.Text), "==") {
+		if declaration.Variant == "definition" && !isTypeAliasText(normalizedDeclarationText(declaration.Text)) {
 			name, _, ok := definitionName(declaration.LHS)
 			if ok {
 				if len(definitions[name]) == 0 {
@@ -369,6 +369,9 @@ func expressionNames(expression syntaxfront.Expr, out []string) []string {
 	if expression.Tail != nil {
 		out = expressionNames(*expression.Tail, out)
 	}
+	if expression.Body != nil {
+		out = expressionNames(*expression.Body, out)
+	}
 	for _, item := range expression.Items {
 		out = expressionNames(item, out)
 	}
@@ -410,6 +413,26 @@ func (s *inferState) infer(expression syntaxfront.Expr, environment map[string]*
 			return nil, err
 		}
 		return Resolve(result, s.substitutions), nil
+	case "conditional":
+		condition, err := s.infer(*expression.Head, environment)
+		if err != nil {
+			return nil, err
+		}
+		if err = Unify(condition, &Type{Kind: TypeNamed, Name: "bool"}, s.substitutions); err != nil {
+			return nil, err
+		}
+		trueType, err := s.infer(*expression.Body, environment)
+		if err != nil {
+			return nil, err
+		}
+		falseType, err := s.infer(*expression.Tail, environment)
+		if err != nil {
+			return nil, err
+		}
+		if err = Unify(trueType, falseType, s.substitutions); err != nil {
+			return nil, err
+		}
+		return Resolve(trueType, s.substitutions), nil
 	case "infix":
 		if comparisonOperator(expression.Text) && expression.Head != nil && expression.Head.Variant == "infix" && comparisonOperator(expression.Head.Text) {
 			left, err := s.infer(*expression.Head.Head, environment)
