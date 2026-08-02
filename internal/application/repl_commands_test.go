@@ -202,6 +202,31 @@ func TestIdentifierQueriesFindStandardEnvironmentDefinitions(t *testing.T) {
 	}
 }
 
+func TestIdentifierQueriesLocateInternallyImplementedStandardDeclarations(t *testing.T) {
+	i := queryInterpreter()
+	path := "/tmp/miralib/stdenv.m"
+	typeValue, err := semantics.ParseType("[char]->((num,num),num)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	i.StandardTypes = map[string]*semantics.Type{"filestat": typeValue}
+	i.runtime().globals["filestat"] = immediate(languageValue{kind: valueFunction})
+	i.Scripts.Put(Script{Path: path, Source: []byte("`filestat' returns file identity and modification time.\n\n> filestat :: [char]->((num,num),num)  ||defined internally\n")})
+
+	definition, foundPath, ok := i.findDefinition("filestat")
+	if !ok || foundPath != path || definition.Expression.Span.Line != 3 {
+		t.Fatalf("definition = %+v, path = %q, ok = %v", definition, foundPath, ok)
+	}
+	var output bytes.Buffer
+	if err := i.handleQuery("?filestat", &output); err != nil {
+		t.Fatal(err)
+	}
+	want := "filestat :: [char]->((num,num),num) ||defined in \"/tmp/miralib/stdenv.m\" line 3\n"
+	if output.String() != want {
+		t.Fatalf("finger = %q, want %q", output.String(), want)
+	}
+}
+
 func TestScopeIndexUnifiesStandardIncludedAliasedSuppressedAndLocalNames(t *testing.T) {
 	i := queryInterpreter()
 	standardPath := "/tmp/miralib/stdenv.m"

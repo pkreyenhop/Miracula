@@ -114,6 +114,15 @@ func (i *Interpreter) standardDefinition(name string) (string, int) {
 			return path, line
 		}
 	}
+	// Internally implemented standard functions intentionally have no Miranda
+	// equation. Their authoritative documentation and type declaration live in
+	// stdenv.m, so queries should locate that declaration instead of reporting a
+	// synthetic <built-in> location.
+	for _, path := range paths {
+		if line, ok := sourceDeclarationLine(i.Scripts.Scripts[path].Source, name); ok {
+			return path, line
+		}
+	}
 	return "<built-in>", 0
 }
 

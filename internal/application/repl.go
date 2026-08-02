@@ -634,6 +634,17 @@ func sourceDefinitionType(source []byte, name string) string {
 	return ""
 }
 
+func sourceDeclarationLine(source []byte, name string) (int, bool) {
+	prefix := name + " ::"
+	for index, raw := range strings.Split(string(source), "\n") {
+		line := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(raw), ">"))
+		if strings.HasPrefix(line, prefix) {
+			return index + 1, true
+		}
+	}
+	return 0, false
+}
+
 func (i *Interpreter) allNames(out io.Writer) error {
 	entries := i.scopeIndex()
 	if len(entries) == 0 && i.Programs[i.Compiler.CurrentModule] == nil {
