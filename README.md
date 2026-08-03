@@ -94,7 +94,7 @@ fib 20
 
 ## Building and installing
 
-The interpreter is written in Go and supports macOS on Apple Silicon. Go 1.24
+The interpreter is written in Go and supports macOS and Linux. Go 1.24
 or newer is required:
 
 ```sh
@@ -102,21 +102,7 @@ make
 ./build/mira --build-info
 ```
 
-Install the binary and its standard library under `/usr/local` (or set a
-different `PREFIX`):
-
-```sh
-make install PREFIX=/usr/local
-make uninstall PREFIX=/usr/local
-```
-
-The installed command finds `../lib/miralib` relative to itself. `MIRALIB` and
-`-lib` remain available as explicit overrides. Release archives are produced
-with `make package`; set `SOURCE_DATE_EPOCH` to reproduce metadata exactly.
-
-The production Go release supports macOS only; Linux is explicitly not a
-supported build or migration target. Configuration precedence is documented in
-[`docs/configuration.md`](docs/configuration.md).
+Configuration precedence is documented in [`docs/configuration.md`](docs/configuration.md).
 
 ## Testing
 
@@ -156,9 +142,9 @@ Common examples include:
 
 The project is tested on:
 
-- macOS on 64-bit ARM systems
+- macOS and Linux (64-bit ARM and x86_64 systems)
 
-Linux, Intel macOS, and other targets are explicitly unsupported and fail the
+Windows and other targets are explicitly unsupported and fail the
 production build rather than compiling a partial interpreter.
 
 ## Compatibility

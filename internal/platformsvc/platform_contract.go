@@ -3,6 +3,7 @@ package platformsvc
 import (
 	"context"
 	"errors"
+	"syscall"
 	"time"
 )
 
@@ -70,7 +71,7 @@ type TerminalInfo struct {
 }
 
 type TerminalState struct {
-	termios [72]byte
+	termios syscall.Termios
 }
 
 type Services interface {
