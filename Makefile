@@ -1,13 +1,14 @@
-PREFIX ?= /usr/local
-DESTDIR ?= /
 BUILD_DIR ?= build
 
-.PHONY: all build generate test vet race verify install uninstall package smoke clean
+.PHONY: all build run generate test vet race verify smoke clean
 
 all: build
 
 build:
-	go run ./internal/cmd/package build --output $(BUILD_DIR)/mira
+	go build -o $(BUILD_DIR)/mira ./cmd/mira
+
+run: build
+	./$(BUILD_DIR)/mira
 
 generate:
 	go generate ./...
@@ -29,19 +30,10 @@ verify: clean
 	go test ./...
 	go test -race ./...
 	go run ./internal/cmd/checkdag
-	go run ./internal/cmd/package build --output $(BUILD_DIR)/mira
-
-install:
-	go run ./internal/cmd/package install --prefix $(PREFIX) --destdir $(DESTDIR)
-
-uninstall:
-	go run ./internal/cmd/package uninstall --prefix $(PREFIX) --destdir $(DESTDIR)
-
-package:
-	go run ./internal/cmd/package archive --output $(BUILD_DIR)/miracula-darwin-arm64.tar.gz
+	go build -o $(BUILD_DIR)/mira ./cmd/mira
 
 smoke:
 	go test ./...
 
 clean:
-	go run ./internal/cmd/package clean
+	rm -rf $(BUILD_DIR)
